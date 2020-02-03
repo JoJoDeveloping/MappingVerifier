@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -164,6 +165,32 @@ public class MappingVerifier
         catch (IOException e)
         {
             throw new IOException("Could not open map file: " + e.getMessage());
+        }
+    }
+
+    public void loadParams(File paramFile) throws IOException {
+        try (Stream<String> stream = Files.lines(Paths.get(paramFile.toURI()))) {
+            List<String> lines = stream.map(l -> l.split("#")[0].replaceAll("\\s+$", "")).filter(l -> !l.isEmpty()).collect(Collectors.toList());
+            if (!lines.isEmpty())
+            {
+                lines.stream().map(s -> s.split(" "))
+                     .forEach(ss -> {
+                         if (ss.length != 4) {
+                             Main.LOG.warning("Invalid params.txt line, too many pieces: " + Arrays.toString(ss));
+                         }
+                         String clazz = ss[0];
+                         ClsInfo info = map.getClass(map.unmap(clazz));
+//                         String obfName = info.unmap(ss[1], ss[2]);
+//                         String obfDesc = map.unmapDesc(ss[2]);
+                         info.putParamId(ss[1], ss[2], Integer.parseInt(ss[3]));
+                     });
+            }
+            else
+            {
+                Main.LOG.warning("Invalid params file: No entries");
+            }
+        } catch (IOException e) {
+            throw new IOException("Could not open params file: " + e.getMessage());
         }
     }
 

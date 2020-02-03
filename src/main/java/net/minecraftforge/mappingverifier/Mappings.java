@@ -20,6 +20,7 @@ package net.minecraftforge.mappingverifier;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -126,6 +127,7 @@ public class Mappings
         private Map<String, String> fm_to_o = new HashMap<>();
         private Map<String, String> mo_to_m = new HashMap<>();
         private Map<String, String> mm_to_o = new HashMap<>();
+        private Map<String, Integer> mm_to_p = new HashMap<>();
 
         public ClsInfo(String name)
         {
@@ -141,6 +143,10 @@ public class Mappings
         {
             mo_to_m.put(obfed + obfedSig, maped);
             mm_to_o.put(maped + mapedSig, obfed);
+        }
+
+        public void putParamId(String maped, String mapedSig, int id) {
+            mm_to_p.put(maped + mapedSig, id);
         }
 
         public String map(String field)
@@ -161,6 +167,11 @@ public class Mappings
         public String unmap(String method, String signature)
         {
             return mm_to_o.getOrDefault(method + signature, method);
+        }
+
+        public OptionalInt paramId(String method, String sig) {
+            Integer i = mm_to_p.get(method + sig);
+            return i == null ? OptionalInt.empty() : OptionalInt.of(i);
         }
 
         @Override

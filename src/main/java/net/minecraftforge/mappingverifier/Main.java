@@ -47,6 +47,7 @@ public class Main
         parser.accepts("version").forHelp();
         OptionSpec<File> jarArg = parser.accepts("jar").withRequiredArg().ofType(File.class).required();
         OptionSpec<File> mapArg = parser.accepts("map").withRequiredArg().ofType(File.class).required();
+        OptionSpec<File> paramsArg = parser.accepts("params").withRequiredArg().ofType(File.class).required();
         OptionSpec<String> logArg = parser.accepts("log").withRequiredArg().ofType(String.class);
         parser.accepts("verbose");
 
@@ -67,6 +68,7 @@ public class Main
 
             File jarFile = jarArg.value(options);
             File mapFile = mapArg.value(options);
+            File paramsFile = paramsArg.value(options);
             String logFile = logArg.value(options);
             boolean verbose = options.has("verbose");
 
@@ -116,6 +118,7 @@ public class Main
             log(Main.VERSION);
             log("Jar:      " + jarFile);
             log("Map:      " + mapFile);
+            log("Params:   " + paramsFile);
             log("Log:      " + logFile);
 
             try
@@ -123,6 +126,7 @@ public class Main
                 MappingVerifier mv = new MappingVerifier();
                 mv.addDefaultTasks();
                 mv.loadMap(mapFile);
+                mv.loadParams(paramsFile);
                 mv.loadJar(jarFile); //TODO: Add full classpath so we can check all classes including JVM?
                 if (!mv.verify())
                 {

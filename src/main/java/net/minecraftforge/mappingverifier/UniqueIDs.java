@@ -19,10 +19,12 @@
 package net.minecraftforge.mappingverifier;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -37,6 +39,7 @@ public class UniqueIDs extends SimpleVerifier
     public boolean process(InheratanceMap inh, Mappings map)
     {
         Map<Integer, Set<String>> claimed = new HashMap<>();
+        Set<Integer> inSrgfile = new HashSet<>(), inParamsTxt = new HashSet<>();
         Map<String, Set<List<String>>> signatures = new HashMap<>();
 
         inh.getRead().forEach(cls ->
@@ -49,7 +52,19 @@ public class UniqueIDs extends SimpleVerifier
                 {
                     claimed.computeIfAbsent(Integer.parseInt(idstr), k -> new HashSet<>()).add(entry[0]);
                     signatures.computeIfAbsent(entry[0], k -> new HashSet<>()).add(Arrays.asList(Arrays.copyOfRange(entry, 1, entry.length)));
+                    inSrgfile.add(Integer.parseInt(idstr));
                 }
+            };
+
+
+            Consumer<String[]> gatherParam = entry ->
+            {
+                OptionalInt param = info.paramId(entry[0], map.unmapDesc(entry[2]));
+                signatures.computeIfAbsent(entry[0], k -> new HashSet<>()).add(Arrays.asList(Arrays.copyOfRange(entry, 1, entry.length)));
+                param.ifPresent(id -> {
+                    claimed.computeIfAbsent(id, k -> new HashSet<>()).add(entry[0]);
+                    inParamsTxt.add(id);
+                });
             };
 
             cls.fields.values().stream()
@@ -61,7 +76,20 @@ public class UniqueIDs extends SimpleVerifier
             .map(method  -> new String[] {info.map(method.name, method.desc), method.name, method.desc})
             .filter(entry -> entry[0].startsWith("func_"))
             .forEach(gather);
+
+
+            cls.methods.values().stream()
+            .map(method  -> new String[] {info.map(method.name, method.desc), method.name, method.desc})
+            .filter(entry -> !entry[0].startsWith("func_"))
+            .forEach(gatherParam);
         });
+
+        boolean isOK = true;
+
+        if (!Collections.disjoint(inParamsTxt, inSrgfile)) {
+            error("Duplicate ID between params.txt and joined.tsrg!");
+            isOK = false;
+        }
 
         return claimed.entrySet().stream().filter(e -> e.getValue().size() > 1 || different(signatures.get(e.getValue().iterator().next()))).sorted((e1, e2) -> e1.getKey().compareTo(e2.getKey())).map(entry ->
         {
@@ -71,7 +99,7 @@ public class UniqueIDs extends SimpleVerifier
                 error("    %s (%s)", name, signatures.get(name).stream().map(e -> String.join(" ", e)).collect(Collectors.joining(", ")));
             });
             return false;
-        }).reduce(true, (a,b)-> a && b);
+        }).reduce(isOK, (a,b)-> a && b);
     }
 
     private boolean different(Set<List<String>> entries) {
